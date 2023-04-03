@@ -1,0 +1,36 @@
+name: Cleanup Development Branch Doc
+
+# only trigger on pull request closed events
+on:
+  pull_request:
+    types: [ closed ]
+
+jobs:
+  merge_or_close_job:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        ref: 'gh-pages'
+    - name: Check For Doc Directory
+      id: folder_check
+      run: |
+        echo PR #${{ github.event.number }} has been merged or closed. Cleaning up doc
+        echo This came from source branch ${{ github.head_ref }}
+        echo This was targeted at branch ${{ github.base_ref }}
+        if [ -d "prs" ]; then
+          echo "Generate doc found under dev"
+          echo "check_result=true" >> $GITHUB_OUTPUT
+        else
+          echo "No generated doc found. No cleanup to happen"
+          echo "check_result=false" >> $GITHUB_OUTPUT
+        fi
+    - name: Run dependent step
+      if: steps.folder_check.outputs.check_result == 'true'
+      run: |
+         git config --global user.name "github-doc-bot"
+         git config --global user.email "docbot@github.dev"
+         git rm -rf "prs/${{ github.head_ref }}"
+         git commit -m "Remove dev doc for branch: ${{ github.head_ref }}"
+         git push origin 'gh-pages'
