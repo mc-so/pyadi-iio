@@ -83,6 +83,10 @@ def attribute_single_value_boolean(uri, classname, attr, value):
             Value to write and read back from attribute
     """
     bi = eval(classname + "(uri='" + uri + "')")
+
+    if not hasattr(bi, attr):
+        raise AttributeError(f"no attribute named: {attr}")
+
     setattr(bi, attr, value)
     rval = getattr(bi, attr)
     del bi
@@ -179,8 +183,8 @@ def attribute_single_value_pow2(uri, classname, attr, max_pow, tol, repeats=1):
         assert dev_interface(uri, classname, val, attr, tol)
 
 
-def attribute_multipe_values(uri, classname, attr, values, tol, repeats=1, sleep=0):
-    """attribute_multipe_values: Write and read back multiple class properties
+def attribute_multiple_values(uri, classname, attr, values, tol, repeats=1, sleep=0):
+    """attribute_multiple_values: Write and read back multiple class properties
     in a loop where all values are pre-defined. This is performed a defined
     number of times.
 
@@ -206,10 +210,10 @@ def attribute_multipe_values(uri, classname, attr, values, tol, repeats=1, sleep
                 assert dev_interface(uri, classname, val, attr, tol, sleep=sleep)
 
 
-def attribute_multipe_values_with_depends(
+def attribute_multiple_values_with_depends(
     uri, classname, attr, depends, values, tol, repeats=1
 ):
-    """attribute_multipe_values_with_depends: Write and read back multiple class
+    """attribute_multiple_values_with_depends: Write and read back multiple class
     properties in a loop where all values are pre-defined, where a set of
     dependent attributes are written first. This is performed a defined
     number of times.
@@ -258,6 +262,10 @@ def attribute_write_only_str(uri, classname, attr, value):
             Value to write into attr property
     """
     sdr = eval(classname + "(uri='" + uri + "')")
+
+    if not hasattr(sdr, attr):
+        raise AttributeError(f"no attribute named: {attr}")
+
     try:
         setattr(sdr, attr, value)
         del sdr
@@ -284,6 +292,14 @@ def attribute_write_only_str_with_depends(uri, classname, attr, value, depends):
             are properties and values are values to be written
     """
     sdr = eval(classname + "(uri='" + uri + "')")
+
+    for p in depends:
+        if not hasattr(sdr, p):
+            raise AttributeError(f"no attribute named: {p}")
+
+    if not hasattr(sdr, attr):
+        raise AttributeError(f"no attribute named: {attr}")
+
     for p in depends:
         setattr(sdr, p, depends[p])
     try:
