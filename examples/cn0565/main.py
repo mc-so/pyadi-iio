@@ -8,16 +8,16 @@ import os.path
 import realtimeEITUI
 import argparse
 
-from EitSerialReaderProtocol import EIT, EIT_Interface
 import serial
 import serial.tools.list_ports
-from commWorker import EITWorker
 
+from cn0565_worker import CN0565_Worker
+import adi
 
-__tool_name__   = "Realtime Electrical Impedance Tomography"
-__banner__   = "by Kister Jimenez and Mark Ramos"
-__version__ = "0.0.1.0"
-__release_date_ = "27-Sep-2018"
+__tool_name__ = "Real Time Electrical Impedance Tomography"
+__banner__ = "by Kister Jimenez and Mark Ramos, revised by Ivan Mercano"
+__version__ = "0.0.2.0"
+__release_date__ = "19-May-2023"
 
 from types import MethodType
 
@@ -33,7 +33,7 @@ class RealtimeEIT(QtWidgets.QMainWindow, realtimeEITUI.Ui_MainWindow):
         super(RealtimeEIT,self).__init__(parent)
         self.port = port
         self.baudrate = baudrate
-        self.iio = iio
+        self.iio=iio
         self.intf = None
         self.setupUi(self)
         self.setFixedSize(self.size())
@@ -45,6 +45,9 @@ class RealtimeEIT(QtWidgets.QMainWindow, realtimeEITUI.Ui_MainWindow):
         self.toolbar = NavigationToolbar(self.canvas, self)
         self.vLayout_plot.addWidget(self.toolbar)
         self.vLayout_plot.addWidget(self.canvas)
+        self.connected=False
+
+        #functionality
         self.sldr_freq.valueChanged.connect(self.freqValueChanged)
         self.sldr_p.valueChanged.connect(self.pValueChanged)
         self.sldr_lambda.valueChanged.connect(self.lambdaValueChanged)
@@ -57,63 +60,77 @@ class RealtimeEIT(QtWidgets.QMainWindow, realtimeEITUI.Ui_MainWindow):
         self.rbtn_bp.toggled.connect(lambda:self.btnState(self.rbtn_bp))
         self.rbtn_jac.toggled.connect(lambda:self.btnState(self.rbtn_jac))
         self.rbtn_greit.toggled.connect(lambda:self.btnState(self.rbtn_greit))
-        self.update_cmb_comm_select()
-        self.eit_worker = EITWorker(figure = self.figure)
-        self.eit_worker.doneCompute.connect(self.updatePlot)
-        self.eit_worker.doneGetSupportedElectrodeCount.connect(self.updateElectrodeCount)
-        self.eit_worker.buildMesh(el=el,h0=0.06,dist=1,step=1)
+
+
+        #workers
+        self.worker = CN0565_Worker(figure=self.figure)
+        self.worker.doneCompute.connect(self.updatePlot)
+        self.worker.doneGetSupportedElectrodeCount.connect(self.updateElectrodeCount)
+        
+
+        # function declaration
         self.freqValueChanged()
         self.pValueChanged()
         self.lambdaValueChanged()
         self.rbtn_bp.toggle()
         self.rbtn_real.toggle()
+        self.update_cmb_comm_select()
+
+        self.updateElectrodeCount(el)
 
         index = self.cmb_supported_electrode_count_select.findText(str(el), QtCore.Qt.MatchFixedString)
         if index >= 0:
             self.cmb_supported_electrode_count_select.setCurrentIndex(index)
-        #self.cmb_comm_select.showPopup = rebinder(self.showPopup)
-        #self.cmb_comm_select.view().pressed.connect(self.update_cmb_comm_select)
-        #self.solve()
-
+    
+    def updatePlot(self):
+        self.canvas.draw()
+            
     def comm_connect(self):
-        """
-        """
         if self.btn_connect.text() == "Connect":
             self.btn_connect.setText("Disconnect")
             self.port = self.cmb_comm_select.currentData().strip()
-            try:
-                print(f"Serial: {self.port} baudrate: {self.baudrate}")
-                self.intf = EIT_Interface(self.port, self.baudrate, self.iio)
-                self.eit_worker.intf=self.intf
-                self.eit_worker.start()
-            except Exception as e:
-                print(f"Serial Connection Error! {e}")
-                self.btn_connect.setText("Connect")
-                self.intf.close()
+            if self.connected==True:
+                self.worker.intf=self.intf
+                self.worker.start()
+            else:
+                try:
+                    print(f"Serial: {self.port} baudrate: {self.baudrate}")
+                    self.intf = adi.cn0565(uri=f"serial:{self.port},{self.baudrate},8n1")
+                    self.worker.intf=self.intf
+                    self.worker.start()
+                except Exception as e:
+                    print(f"Serial Connection Error! {e}")
+                    self.btn_connect.setText("Connect")
+                    self.intf.close()
+                self.connected = True
+
         else:
             #TODO: stop hardware first
             self.btn_connect.setText("Connect")
-            self.eit_worker.exiting=True
-            self.intf.close()
+            print("Disconnected!")
+            print("Ready for another run...")
+            self.worker.exiting=True
+            self.worker.quit()
+
 
     def btnState(self,btn):
         if btn.isChecked():
-            print(btn.text() + "is chosen")
+            print(btn.text() + " is chosen")
             if btn.text()=='Real':
-                self.eit_worker.setValueType("re")
+                self.worker.setValueType("re")
             if btn.text()=="Imaginary":
-                self.eit_worker.setValueType("im")
+                self.worker.setValueType("im")
             if btn.text()=="Magnitude":
-                self.eit_worker.setValueType("mag")
+                self.worker.setValueType("mag")
             if btn.text()=="BP":
-                self.eit_worker.updateReconstructionMethod("bp")
+                self.worker.updateReconstructionMethod("bp")
             if btn.text()=="JAC":
-                self.eit_worker.updateReconstructionMethod("jac")
+                self.worker.updateReconstructionMethod("jac")
             if btn.text()=="GREIT":
-                self.eit_worker.updateReconstructionMethod("greit")
+                self.worker.updateReconstructionMethod("greit")
 
     def setBaseline(self):
-        self.eit_worker.setBaseline()
+        self.worker.setBaseline()
 
     def updatePlot(self):
         self.canvas.draw()
@@ -123,13 +140,17 @@ class RealtimeEIT(QtWidgets.QMainWindow, realtimeEITUI.Ui_MainWindow):
         TODO: Update the Electrode counts supported
         """
         self.cmb_supported_electrode_count_select.clear()
+        
+        if isinstance(supported_electrode_count, int):
+            supported_electrode_count = [supported_electrode_count]
+
         for electrode_count in supported_electrode_count:
             self.cmb_supported_electrode_count_select.addItem(str(electrode_count))
 
     def freqValueChanged(self):
         self.freqVal = int(self.sldr_freq.value())
         self.sbox_freq.setProperty("value",self.freqVal)
-        self.eit_worker.freq=self.freqVal
+        self.worker.freq=self.freqVal
 
     def update_cmb_comm_select(self):
         self.cmb_comm_select.clear()
@@ -140,21 +161,18 @@ class RealtimeEIT(QtWidgets.QMainWindow, realtimeEITUI.Ui_MainWindow):
     def pValueChanged(self):
         self.pVal=int(self.sldr_p.value())/100.0
         self.sbox_p.setProperty("value",self.pVal)
-        self.eit_worker.updatePvalue(p=self.pVal)
+        self.worker.updatePvalue(p=self.pVal)
 
     def lambdaValueChanged(self):
         self.lambdaVal=int(self.sldr_lambda.value())/100.0
         self.sbox_lambda.setProperty("value",self.lambdaVal)
-        self.eit_worker.updateLambdaValue(lamb=self.lambdaVal)
+        self.worker.updateLambdaValue(lamb=self.lambdaVal)
 
     def baselineDragEnterEvent(self, event):
         event.accept()
 
     def inputDragEnterEvent(self, event):
         event.accept()
-        
-    
-        
 def main(argv):
     ap = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
 

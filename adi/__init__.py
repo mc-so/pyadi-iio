@@ -78,6 +78,7 @@ from adi.cn0554 import cn0554
 from adi.cn0566 import CN0566
 from adi.cn0575 import cn0575
 from adi.cn0579 import cn0579
+from adi.cn0565 import cn0565
 from adi.daq2 import DAQ2
 from adi.daq3 import DAQ3
 from adi.fmc_vna import fmcvna
