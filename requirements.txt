@@ -1,10 +1,3 @@
 numpy>=1.20
 pylibiio==0.23.1
 paramiko
-scipy
-matplotlib
-pyserial
-PyQt5
-pyeit
-pandas
-openpyxl

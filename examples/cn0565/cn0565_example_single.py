@@ -1,5 +1,8 @@
 # Copyright (C) 2022 Analog Devices, Inc.
 
+# SPDX short identifier: ADIBSD
+# Author: Michelle Claire So <michelleclaire.so@analog.com>
+
 import cmath
 import sys
 import time

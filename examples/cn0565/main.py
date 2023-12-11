@@ -1,3 +1,8 @@
+# Copyright (C) 2022 Analog Devices, Inc.
+
+# SPDX short identifier: ADIBSD
+# Author: Ivan Gil Mercano <ivangil.mercano@analog.com>
+
 from PyQt5 import QtCore, QtGui, QtWidgets
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar

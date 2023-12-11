@@ -1,5 +1,6 @@
 # Copyright (C) 2022 Analog Devices, Inc.
 
+# SPDX short identifier: ADIBSD
 # Author: Ivan Gil Mercano <ivangil.mercano@analog.com>
 
 from PyQt5.QtCore import *
