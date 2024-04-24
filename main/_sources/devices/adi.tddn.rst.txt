@@ -1,7 +1,7 @@
-ad578x
+tddn
 =================
 
-.. automodule:: adi.ad578x
+.. automodule:: adi.tddn
    :members:
    :undoc-members:
    :show-inheritance:
